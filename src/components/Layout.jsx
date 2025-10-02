@@ -63,7 +63,7 @@ const Layout = ({ children }) => {
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8 bg-white rounded-full"></div>
-                <span className="text-xl font-bold">TechBlog</span>
+                <span className="text-xl font-bold">TechVerse</span>
               </div>
               <p className="text-gray-400">Sharing knowledge and insights about technology and programming.</p>
             </div>
@@ -100,7 +100,7 @@ const Layout = ({ children }) => {
           </div>
           
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; {new Date().getFullYear()} TechBlog. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} TechVerse. All rights reserved.</p>
           </div>
         </div>
       </footer>
