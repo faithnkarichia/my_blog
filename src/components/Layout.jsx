@@ -12,7 +12,7 @@ const Layout = ({ children }) => {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-black rounded-full"></div>
-            <span className="text-xl font-bold">TechBlog</span>
+            <span className="text-xl font-bold">TechVerse</span>
           </Link>
           
           {/* Desktop Navigation */}

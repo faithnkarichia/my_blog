@@ -36,6 +36,16 @@ const Home = () => {
 
   const categories = ["All", "Frontend", "Backend", "DevOps", "CSS", "JavaScript", "Web Development"];
 
+  // Add this inside the Home component, before the return statement
+const categoriesData = [
+  { name: 'Frontend', count: 8, color: 'bg-blue-100 text-blue-800' },
+  { name: 'Backend', count: 5, color: 'bg-green-100 text-green-800' },
+  { name: 'CSS', count: 6, color: 'bg-purple-100 text-purple-800' },
+  { name: 'JavaScript', count: 7, color: 'bg-yellow-100 text-yellow-800' },
+  { name: 'Web Development', count: 4, color: 'bg-red-100 text-red-800' },
+  { name: 'DevOps', count: 3, color: 'bg-indigo-100 text-indigo-800' },
+];
+
   return (
     <div>
       {/* Hero Section */}
@@ -115,31 +125,43 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Categories Section */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Browse by Category</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">Find articles organized by technology and topic.</p>
+    {/* Categories Section */}
+<section className="py-16">
+  <div className="container mx-auto px-4">
+    <div className="text-center mb-12">
+      <h2 className="text-3xl font-bold mb-4">Browse by Category</h2>
+      <p className="text-gray-600 max-w-2xl mx-auto">
+        Find articles organized by technology and topic. Click to explore specific categories.
+      </p>
+    </div>
+    
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+      {categoriesData.map((category, index) => (
+        <Link
+          key={category.name}
+          to="/categories"
+          className="bg-white border border-gray-200 rounded-lg p-6 text-center hover:shadow-lg hover:border-gray-300 transition-all duration-300 group"
+        >
+          <div className={`w-12 h-12 ${category.color} rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}>
+            <Tag size={24} />
           </div>
-          
-          <div className="flex flex-wrap justify-center gap-4">
-            {categories.map((category, index) => (
-              <Link 
-                key={index}
-                to="/categories"
-                className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                  index === 0 
-                    ? 'bg-black text-white' 
-                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                }`}
-              >
-                {category}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
+          <h3 className="font-bold text-gray-900 mb-1">{category.name}</h3>
+          <p className="text-sm text-gray-500">{category.count} articles</p>
+        </Link>
+      ))}
+    </div>
+    
+    <div className="text-center">
+      <Link 
+        to="/categories"
+        className="inline-flex items-center bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors"
+      >
+        View All Categories
+        <ArrowRight size={16} className="ml-2" />
+      </Link>
+    </div>
+  </div>
+</section>
 
       {/* Newsletter Section */}
       <section className="py-16 bg-gray-900 text-white">
