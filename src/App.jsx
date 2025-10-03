@@ -11,6 +11,8 @@ import AdminLayout from './components/AdminLayout.jsx';
 import Posts from './pages/admin/Posts.jsx';
 import NewPost from './pages/admin/NewPost.jsx';
 import AdminDashboard from './pages/admin/AdminDashboard.jsx';
+import Login from './pages/Login.jsx'
+import Signup from './pages/Signup.jsx'
 
 
 function App() {
@@ -30,6 +32,9 @@ function App() {
         <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
         <Route path="/admin/posts" element={<AdminLayout><Posts /></AdminLayout>} />
         <Route path="/admin/new-post" element={<AdminLayout><NewPost /></AdminLayout>} />
+       
+<Route path="/login" element={<Login />} />
+<Route path="/signup" element={<Signup />} />
 
         </Routes>
       </Layout>

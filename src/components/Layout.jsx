@@ -5,6 +5,17 @@ import { Search, Menu, X } from 'lucide-react';
 const Layout = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+
+  const [user, setUser] = useState(() => {
+  const savedUser = localStorage.getItem('user');
+  return savedUser ? JSON.parse(savedUser) : null;
+});
+
+const handleLogout = () => {
+  localStorage.removeItem('user');
+  setUser(null);
+  window.location.href = '/';
+};
   return (
     <div className="min-h-screen bg-white text-gray-900">
       {/* Header */}
@@ -25,9 +36,64 @@ const Layout = ({ children }) => {
           </nav>
           
           <div className="flex items-center space-x-4">
-            <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-              <Search size={20} />
-            </button>
+          
+<div className="flex items-center space-x-4">
+  
+  
+  {user ? (
+    <div className="relative group">
+      <button className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+        <img
+          src={user.avatar}
+          alt={user.name}
+          className="w-8 h-8 rounded-full"
+        />
+        <span className="hidden md:block text-sm font-medium">{user.name}</span>
+      </button>
+      
+      {/* Dropdown Menu */}
+      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+        <div className="py-1">
+          <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            My Profile
+          </Link>
+          <Link to="/bookmarks" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            Saved Articles
+          </Link>
+          <button 
+            onClick={handleLogout}
+            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t border-gray-200"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div className="flex items-center space-x-2">
+      <Link
+        to="/login"
+        className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
+      >
+        Sign in
+      </Link>
+      <span className="text-gray-300">|</span>
+      <Link
+        to="/signup"
+        className="bg-black text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors"
+      >
+        Sign up
+      </Link>
+    </div>
+  )}
+  
+  <button 
+    className="md:hidden p-2 rounded-full hover:bg-gray-100 transition-colors"
+    onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+  >
+    {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+  </button>
+</div>
             <button 
               className="md:hidden p-2 rounded-full hover:bg-gray-100 transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

@@ -4,6 +4,13 @@ import { Calendar, Tag, ArrowLeft, Clock, User, Heart, MessageCircle, Share, Sen
 
 const ArticleDetail = () => {
   const { id } = useParams();
+  
+  // Get user from localStorage (if logged in)
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
   const [comments, setComments] = useState([
     {
       id: 1,
@@ -123,8 +130,8 @@ const ArticleDetail = () => {
 
     const comment = {
       id: Date.now(),
-      user: 'Current User', // In real app, this would be the logged-in user
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80',
+      user: user ? user.name : 'Current User',
+      avatar: user ? user.avatar : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80',
       content: newComment,
       timestamp: 'Just now',
       likes: 0,
@@ -143,8 +150,8 @@ const ArticleDetail = () => {
 
     const reply = {
       id: Date.now(),
-      user: 'Current User',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80',
+      user: user ? user.name : 'Current User',
+      avatar: user ? user.avatar : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80',
       content: replyContent,
       timestamp: 'Just now',
       likes: 0,
@@ -164,6 +171,10 @@ const ArticleDetail = () => {
   };
 
   const toggleReply = (commentId) => {
+    if (!user) {
+      // If user is not logged in, we could show a login prompt here
+      return;
+    }
     setReplyStates(prev => ({
       ...prev,
       [commentId]: !prev[commentId]
@@ -220,7 +231,7 @@ const ArticleDetail = () => {
           </div>
 
           {/* Reply Form */}
-          {!isReply && replyStates[comment.id] && (
+          {!isReply && replyStates[comment.id] && user && (
             <form 
               onSubmit={(e) => handleAddReply(comment.id, e)}
               className="mt-4 flex space-x-2"
@@ -348,33 +359,55 @@ const ArticleDetail = () => {
             </h2>
 
             {/* Add Comment Form */}
-            <form onSubmit={handleAddComment} className="mb-12">
-              <div className="flex space-x-4">
-                <img
-                  src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=100&q=80"
-                  alt="Your avatar"
-                  className="w-10 h-10 rounded-full flex-shrink-0"
-                />
-                <div className="flex-1">
-                  <textarea
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Share your thoughts..."
-                    rows="3"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black resize-none"
+            {user ? (
+              <form onSubmit={handleAddComment} className="mb-12">
+                <div className="flex space-x-4">
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    className="w-10 h-10 rounded-full flex-shrink-0"
                   />
-                  <div className="flex justify-end mt-2">
-                    <button
-                      type="submit"
-                      disabled={!newComment.trim()}
-                      className="bg-black text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    >
-                      Post Comment
-                    </button>
+                  <div className="flex-1">
+                    <textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Share your thoughts..."
+                      rows="3"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black resize-none"
+                    />
+                    <div className="flex justify-end mt-2">
+                      <button
+                        type="submit"
+                        disabled={!newComment.trim()}
+                        className="bg-black text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      >
+                        Post Comment
+                      </button>
+                    </div>
                   </div>
                 </div>
+              </form>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-6 text-center mb-12">
+                <User size={32} className="mx-auto mb-3 text-gray-400" />
+                <h3 className="font-medium text-gray-900 mb-2">Join the conversation</h3>
+                <p className="text-gray-600 mb-4">Sign in to share your thoughts and connect with other readers</p>
+                <div className="flex justify-center space-x-3">
+                  <Link
+                    to="/login"
+                    className="bg-black text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    to="/signup"
+                    className="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                  >
+                    Sign up
+                  </Link>
+                </div>
               </div>
-            </form>
+            )}
 
             {/* Comments List */}
             <div className="space-y-8">
