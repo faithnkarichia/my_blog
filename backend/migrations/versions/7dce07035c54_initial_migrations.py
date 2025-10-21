@@ -1,8 +1,8 @@
-"""initial migrations
+"""Initial migrations
 
-Revision ID: 4cf1ae446864
+Revision ID: 7dce07035c54
 Revises: 
-Create Date: 2025-10-06 16:18:38.239846
+Create Date: 2025-10-16 15:18:54.625372
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '4cf1ae446864'
+revision = '7dce07035c54'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -24,6 +24,7 @@ def upgrade():
     sa.Column('email', sa.String(length=100), nullable=False),
     sa.Column('password', sa.String(length=255), nullable=False),
     sa.Column('role', sa.String(length=50), nullable=False),
+    sa.Column('avatar', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email')
@@ -39,6 +40,8 @@ def upgrade():
     sa.Column('author', sa.String(length=100), nullable=True),
     sa.Column('author_avatar', sa.String(length=255), nullable=True),
     sa.Column('content', sa.Text(), nullable=True),
+    sa.Column('title', sa.String(length=300), nullable=False),
+    sa.Column('status', sa.String(), nullable=False),
     sa.Column('likes', sa.Integer(), nullable=False),
     sa.Column('liked', sa.Boolean(), nullable=False),
     sa.Column('tags', sa.JSON(), nullable=True),

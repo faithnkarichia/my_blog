@@ -28,6 +28,8 @@ with app.app_context():
     # --- ARTICLES ---
     article1 = Article(
         user=user1,
+        title="Learn Flask in a Day",  # 🆕 added title
+        status="published",            # 🆕 added status
         excerpt="Learn Flask in a Day",
         category="Backend",
         read_time="5 min",
@@ -42,6 +44,8 @@ with app.app_context():
 
     article2 = Article(
         user=user2,
+        title="Mastering CSS Grid Layout",  # 🆕 added title
+        status="draft",                     # 🆕 added status
         excerpt="Mastering CSS Grid Layout",
         category="CSS",
         read_time="6 min",
@@ -81,4 +85,4 @@ with app.app_context():
     db.session.add_all([user1, user2, article1, article2, comment1, comment2])
     db.session.commit()
 
-    print("✅ Database seeded successfully with avatars and hashed passwords!")
+    print("✅ Database seeded successfully with titles, status, avatars, and hashed passwords!")

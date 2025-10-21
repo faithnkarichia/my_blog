@@ -39,11 +39,13 @@ class Article(db.Model, SerializerMixin):
         nullable=False,
     )
 
-    read_time = db.Column(db.String(50), nullable=False)
+    read_time = db.Column(db.String(50), nullable=False, default="0 min read")
     image = db.Column(db.String(255), nullable=True)
     author = db.Column(db.String(100), nullable=True)
     author_avatar = db.Column(db.String(255), nullable=True)
-    content = db.Column(db.Text, nullable=True)
+    content = db.Column(db.Text, nullable=False)
+    title= db.Column(db.String(300), nullable= False)
+    status=db.Column(db.String, nullable=False)
 
     likes = db.Column(db.Integer, default=0, nullable=False)
     liked = db.Column(db.Boolean, default=False, nullable=False)

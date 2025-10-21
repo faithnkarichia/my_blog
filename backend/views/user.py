@@ -25,7 +25,7 @@ def login():
 # we query the db to check if the user is there
     user= User.query.filter_by(email=email).first()
     # if yes generate token and allow access based on the role
-    print(user.full_name,"user data")
+    # print(user.full_name,"user data")
 
     if not user :
         return jsonify({"error":"email or password is wrong"}),401
