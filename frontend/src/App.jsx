@@ -13,6 +13,7 @@ import NewPost from './pages/admin/NewPost.jsx';
 import AdminDashboard from './pages/admin/AdminDashboard.jsx';
 import Login from './pages/Login.jsx'
 import Signup from './pages/Signup.jsx'
+import EditPost from './pages/admin/EditPost.jsx';
 
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
         <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
         <Route path="/admin/posts" element={<AdminLayout><Posts /></AdminLayout>} />
         <Route path="/admin/new-post" element={<AdminLayout><NewPost /></AdminLayout>} />
+        <Route path="/admin/edit-post/:id" element={<AdminLayout><EditPost /></AdminLayout>} />
        
 <Route path="/login" element={<Login />} />
 <Route path="/signup" element={<Signup />} />

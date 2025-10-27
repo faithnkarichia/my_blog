@@ -5,7 +5,7 @@ from sqlalchemy_serializer import SerializerMixin
 from extensions import db
 
 
-class User(db.Model, SerializerMixin):
+class User(db.Model):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -24,7 +24,7 @@ class User(db.Model, SerializerMixin):
         return f"<User {self.email}>"
 
 
-class Article(db.Model, SerializerMixin):
+class Article(db.Model):
     __tablename__ = "articles"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -49,8 +49,8 @@ class Article(db.Model, SerializerMixin):
 
     likes = db.Column(db.Integer, default=0, nullable=False)
     liked = db.Column(db.Boolean, default=False, nullable=False)
+    stats=db.Column(db.Integer, nullable=True)
 
-    # Use JSON to store tags (portable across DBs). If you're using Postgres you can change to ARRAY.
     tags = db.Column(db.JSON, default=list)
 
     # relationships
@@ -59,9 +59,36 @@ class Article(db.Model, SerializerMixin):
 
     def __repr__(self):
         return f"<Article {self.id} by {self.author}>"
+    
 
 
-class Comment(db.Model, SerializerMixin):
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "title": self.title,
+            "excerpt": self.excerpt,
+            "date": self.date.isoformat() if self.date else None,
+            "category": self.category,
+            "read_time": self.read_time,
+            "image": self.image,
+            "author": self.author,
+            "author_avatar": self.author_avatar,
+            "content": self.content,
+            "status": self.status,
+            "likes": self.likes,
+            "liked": self.liked,
+            "stats": self.stats,
+            "tags": self.tags,
+            
+            "comments": [comment.to_dict() for comment in self.comments] if self.comments else []
+        }
+
+
+
+
+class Comment(db.Model):
     __tablename__ = "comments"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -74,7 +101,6 @@ class Comment(db.Model, SerializerMixin):
 
     likes = db.Column(db.Integer, default=0, nullable=False)
 
-    # replies: store as JSON list of reply objects (portable). Or make a Reply model if replies need more structure.
     replies = db.Column(db.JSON, default=list)
 
     # relationships
@@ -83,3 +109,27 @@ class Comment(db.Model, SerializerMixin):
 
     def __repr__(self):
         return f"<Comment {self.id} on article {self.article_id}>"
+    
+
+    def to_dict(self, include_user: bool = False):
+        data = {
+            "id": self.id,
+            "article_id": self.article_id,
+            "user_id": self.user_id,
+            "avatar": self.avatar,
+            "content": self.content,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "likes": self.likes,
+            "replies": self.replies if self.replies is not None else [],
+        }
+
+        if include_user and self.user:
+            data["user"] = {
+                "id": getattr(self.user, "id", None),
+                "full_name": getattr(self.user, "full_name", None),
+                "email": getattr(self.user, "email", None),         
+                "avatar": getattr(self.user, "avatar", None),
+               
+            }
+
+        return data

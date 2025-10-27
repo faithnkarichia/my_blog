@@ -10,6 +10,7 @@ const AdminLayout = ({ children }) => {
     { path: '/admin/posts', icon: FileText, label: 'All Posts' },
     { path: '/admin/new-post', icon: Plus, label: 'New Post' },
     { path: '/admin/settings', icon: Settings, label: 'Settings' },
+    
   ];
 
   return (
