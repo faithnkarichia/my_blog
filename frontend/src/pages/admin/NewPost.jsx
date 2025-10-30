@@ -16,25 +16,29 @@ const NewPost = () => {
     image: '',
     status: 'draft'
   });
-  const [featuredImage, setFeaturedImage] = useState(null);
+
+  // Featured image / upload states
+  const [featuredImage, setFeaturedImage] = useState(null); // local preview URL
+  const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [imageError, setImageError] = useState(null);
+
   const [readTime, setReadTime] = useState('0 min read');
 
-  // Replace with your Cloudinary cloud name and upload preset
-  const CLOUDINARY_CLOUD_NAME = 'dk1vrqeia';
-  const CLOUDINARY_UPLOAD_PRESET = 'react_unsigned';
+  const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
   const categories = ['Frontend', 'Backend', 'CSS', 'JavaScript', 'Web Development', 'DevOps'];
 
   // Calculate read time based on content
   const calculateReadTime = (content) => {
-    // Remove HTML tags and count words
     const text = content.replace(/<[^>]*>/g, '');
-    const wordCount = text.trim().split(/\s+/).length;
-    const readingTimeMinutes = Math.ceil(wordCount / 200); // 200 words per minute
+    const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+    const readingTimeMinutes = Math.ceil((wordCount || 0) / 200);
     return `${readingTimeMinutes} min read`;
   };
 
+  // keep this function for compatibility (used in EditPost style)
   const uploadToCloudinary = async (file) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -51,7 +55,8 @@ const NewPost = () => {
       );
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errJson = await response.json().catch(()=>({}));
+        throw new Error(errJson.error?.message || 'Upload failed');
       }
 
       const data = await response.json();
@@ -62,71 +67,74 @@ const NewPost = () => {
     }
   };
 
-  const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
+  // New handler mirroring EditPost behaviour: preview + immediate upload + states
+  const handleImageChange = async (e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
 
+    // validations
     if (!file.type.startsWith('image/')) {
       alert('Please upload an image file');
       return;
     }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+    if (file.size > 8 * 1024 * 1024) { // 8MB limit (matching edit)
+      alert('Please choose an image smaller than 8MB');
       return;
     }
 
+    // create preview URL
+    const localUrl = URL.createObjectURL(file);
+    setFeaturedImage(localUrl);
+    setSelectedFile(file);
+    setImageError(null);
+
+    // upload immediately
     setIsUploading(true);
-
     try {
-      const localUrl = URL.createObjectURL(file);
-      setFeaturedImage(localUrl);
-
-      const cloudinaryUrl = await uploadToCloudinary(file);
-      
-      setPost({ ...post, image: cloudinaryUrl });
-      
-      URL.revokeObjectURL(localUrl);
-      
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Failed to upload image. Please try again.');
-      setFeaturedImage(null);
+      const secureUrl = await uploadToCloudinary(file);
+      setPost(prev => ({ ...prev, image: secureUrl }));
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      const message = (err && err.message) ? err.message : 'Upload failed';
+      setImageError(message);
+      setPost(prev => ({ ...prev, image: '' }));
     } finally {
       setIsUploading(false);
+      // revoke local object URL after a short delay so it remains visible briefly
+      setTimeout(() => {
+        try { URL.revokeObjectURL(localUrl); } catch (e) {}
+      }, 1000);
     }
   };
 
   const handleRemoveImage = () => {
-    setFeaturedImage(null);
-    setPost({ ...post, image: '' });
+    setSelectedFile(null);
+    setFeaturedImage('');
+    setPost(prev => ({ ...prev, image: '' }));
+    setImageError(null);
   };
 
   const handleContentChange = (content) => {
     setPost({ ...post, content });
-    // Update read time whenever content changes
     const calculatedReadTime = calculateReadTime(content);
     setReadTime(calculatedReadTime);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!post.title || !post.content || !post.category) {
       alert('Please fill in all required fields: Title, Content, and Category');
       return;
     }
 
-    // Get JWT token from localStorage 
-    const token = localStorage.getItem('access-token'); 
-
+    const token = localStorage.getItem('access-token');
     if (!token) {
       alert('Please log in to create a post');
       navigate('/login');
       return;
     }
 
-    // Prepare post data for backend
     const postData = {
       title: post.title,
       excerpt: post.excerpt,
@@ -135,34 +143,28 @@ const NewPost = () => {
       tags: post.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
       image: post.image,
       status: post.status,
-      read_time: readTime, // Send calculated read time
-      // The backend will add: user_id, author, author_avatar, date from JWT identity
+      read_time: readTime,
     };
 
     try {
       console.log('Saving post:', postData);
-      console.log("token",token)
-      
-      // Send to your backend API with JWT token
       const response = await fetch(`${API_URL}/add_article`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // Include JWT token
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(postData),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(()=>({}));
         throw new Error(errorData.message || 'Failed to save post');
       }
 
-      const result = await response.json();
-      
+      await response.json();
       alert('Post saved successfully!');
       navigate('/admin/posts');
-      
     } catch (error) {
       console.error('Error saving post:', error);
       alert(`Failed to save post: ${error.message}`);
@@ -189,7 +191,7 @@ const NewPost = () => {
   ];
 
   return (
-    <div className="p-8">
+    <div className="p-8 ">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Create New Post</h1>
@@ -331,46 +333,42 @@ const NewPost = () => {
               <p className="text-sm text-gray-500 mt-2">Separate tags with commas</p>
             </div>
 
-            {/* Featured Image */}
+            {/* Featured Image (updated to match EditPost behavior) */}
             <div className="bg-white p-6 rounded-lg border border-gray-200">
               <h3 className="font-bold text-gray-900 mb-4">Featured Image</h3>
-              {isUploading ? (
-                <div className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
-                  <span className="text-sm text-gray-500 mt-2">Uploading...</span>
-                </div>
-              ) : featuredImage ? (
-                <div className="relative">
-                  <img
-                    src={featuredImage}
-                    alt="Featured"
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors">
-                  <Upload size={24} className="text-gray-400 mb-2" />
-                  <span className="text-sm text-gray-500">Upload Image</span>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                  />
+
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                <input
+                  type="file"
+                  id="featuredImage"
+                  name="featuredImage"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+
+                <label htmlFor="featuredImage" className="cursor-pointer inline-block w-full">
+                  <div className="text-gray-400 mb-2 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7l6 6-6 6M21 7l-6 6 6 6" /></svg>
+                  </div>
+                  <p className="text-sm text-gray-600">{featuredImage ? 'Change image' : 'Upload featured image'}</p>
                 </label>
-              )}
-              {post.image && (
-                <p className="text-xs text-green-600 mt-2 truncate">
-                  ✓ Image uploaded to Cloudinary
-                </p>
-              )}
+
+                {featuredImage && (
+                  <div className="mt-4 relative">
+                    <img src={featuredImage} alt="preview" className="w-full object-cover max-h-48 rounded" />
+                    <button type="button" onClick={handleRemoveImage} className="absolute top-2 right-2 bg-white p-1 rounded-full shadow">
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+
+                {isUploading && <p className="text-sm text-gray-600 mt-2">Uploading image...</p>}
+                {imageError && <p className="text-sm text-red-600 mt-2">Image error: {imageError}</p>}
+                {post.image && !featuredImage && (
+                  <p className="text-sm text-green-600 mt-2 truncate">✓ Image set</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

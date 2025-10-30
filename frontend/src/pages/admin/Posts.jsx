@@ -1,51 +1,43 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Edit, Trash2, Eye, Plus } from 'lucide-react';
+import { Search, Filter, Edit, Trash2, Eye, Plus ,FileText} from 'lucide-react';
 
 const Posts = () => {
+  const API_URL = import.meta.env.VITE_API_URL;
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [posts, setPosts]=useState([])
+  const[loading,setLoading]=useState(true)
+  const [id, setId]=useState(null)
+ const token=localStorage.getItem("access-token")
 
-  const posts = [
-    {
-      id: 1,
-      title: 'Getting Started with React 18',
-      status: 'published',
-      category: 'Frontend',
-      date: '2023-05-15',
-      views: 1240,
-      comments: 12,
-    },
-    {
-      id: 2,
-      title: 'Mastering Tailwind CSS',
-      status: 'published',
-      category: 'CSS',
-      date: '2023-04-28',
-      views: 890,
-      comments: 8,
-    },
-    {
-      id: 3,
-      title: 'Node.js Performance Guide',
-      status: 'draft',
-      category: 'Backend',
-      date: '2023-05-20',
-      views: 0,
-      comments: 0,
-    },
-    {
-      id: 4,
-      title: 'TypeScript Best Practices',
-      status: 'published',
-      category: 'Frontend',
-      date: '2023-03-22',
-      views: 1560,
-      comments: 15,
-    },
-  ];
 
-  const filteredPosts = posts.filter(post => {
+  useEffect(()=>{
+    fetch(`${API_URL}/articles`,{
+      method:"GET",
+      headers:{
+        "Content-Type":"application/json"
+        
+        
+      } })
+      .then(res=>res.json())
+      .then((data)=>{
+        console.log("daata",data)
+      setPosts(data)
+      }
+      
+    )
+    .catch((error)=>console.error("error fetching the articles",error))
+    .finally(()=>setLoading(false))
+  },[])
+
+
+  if (loading){
+    return  <div className="p-8">Loading posts...</div>
+    
+  }
+
+  const filteredPosts = (posts || []).filter(post => {
     const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          post.category.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || post.status === statusFilter;
@@ -57,6 +49,28 @@ const Posts = () => {
       ? 'bg-green-100 text-green-800'
       : 'bg-yellow-100 text-yellow-800';
   };
+
+
+  const handleDelete=(id)=>{
+    // i get the id from the clicked article
+    // i send that id to the backend
+    // the magic happens in the backend
+    fetch(`${API_URL}/article/${id}`,{
+      method:"DELETE",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":`Bearer ${token}`
+      }
+    })
+    .then(res=>{
+      if (!res.ok){
+        throw new Error("Failed to delete the article")
+      }
+    })
+    setPosts(posts.filter((post)=>post.id !==id))
+    
+    .catch((error)=>console.error("unable to delete the article",error))
+  }
 
   return (
     <div className="p-8">
@@ -158,10 +172,10 @@ const Posts = () => {
                     <div className="flex items-center space-x-4">
                       <span className="flex items-center">
                         <Eye size={14} className="mr-1" />
-                        {post.views}
+                        {post.stats}
                       </span>
                       <span>•</span>
-                      <span>{post.comments} comments</span>
+                     <span>{post.comments?.length || 0} comments</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm font-medium">
@@ -178,7 +192,7 @@ const Posts = () => {
                       >
                         <Eye size={16} />
                       </Link>
-                      <button className="text-red-600 hover:text-red-900 transition-colors">
+                      <button className="text-red-600 hover:text-red-900 transition-colors" onClick={()=>handleDelete(post.id)}>
                         <Trash2 size={16} />
                       </button>
                     </div>

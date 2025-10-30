@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Menu, X } from 'lucide-react';
+import { Search, Menu, X,User } from 'lucide-react';
 import {jwtDecode} from "jwt-decode"
 import { useEffect } from 'react';
 
@@ -62,11 +62,15 @@ const handleLogout = () => {
   {user ? (
     <div className="relative group">
       <button className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors">
-        <img
-          src={user.avatar}
-          alt={user.user}
-          className="w-8 h-8 rounded-full"
-        />
+        {user.avatar ? (
+  <img
+    src={user.avatar}
+    alt="User avatar"
+    className="w-8 h-8 rounded-full"
+  />
+) : (
+  <User className="w-8 h-8 text-gray-600" />
+)}
         <span className="hidden md:block text-sm font-medium">{user.user}</span>
       </button>
       

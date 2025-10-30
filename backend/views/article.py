@@ -23,6 +23,7 @@ def add_article():
 
     
     tags = data.get("tags")
+    print("taaags",tags)
     if isinstance(tags, str):
         tags = [t.strip() for t in tags.split(",") if t.strip()]
     elif isinstance(tags, list):
@@ -65,51 +66,57 @@ def add_article():
 @article_bp.route("/edit_article/<int:article_id>", methods=["PUT"])
 @jwt_required()
 def edit_article(article_id):
-    
-    current_user=get_jwt_identity()
-    print("this is the current user",current_user)
+    try: 
+        current_user=get_jwt_identity()
+        # print("this is the current user",current_user)
 
-    if current_user.get("role") != "admin" and article.user_id != current_user.get("id"):
-        return jsonify({"error":"You are not authorized to edit this post"}),401
-    
-    data=request.get_json()
-    
-    article=Article.query.get(article_id)
-    if not article:
-        return jsonify({"error":"this article does not exist in our database"}),404
-    
-    
-    user_id=current_user.get("id")
-    tags = data.get("tags")
-    if isinstance(tags, str):
-        tags = [t.strip() for t in tags.split(",") if t.strip()]
-    elif isinstance(tags, list):
-        tags = [str(t).strip() for t in tags if str(t).strip()]
-    else:
-        tags = article.tags or []
-    
-
-    
+        if current_user.get("role") != "admin" and article.user_id != current_user.get("id"):
+            return jsonify({"error":"You are not authorized to edit this post"}),401
         
+        data=request.get_json()
+        print("incoming article data",data)
+        
+        article=Article.query.get(article_id)
+        print("article in the db",article)
+        if not article:
+            return jsonify({"error":"this article does not exist in our database"}),404
+        
+        
+        user_id=current_user.get("id")
+        tags = data.get("tags")
+        
+        if isinstance(tags, str):
+            tags = [t.strip() for t in tags.split(",") if t.strip()]
+        elif isinstance(tags, list):
+            tags = [str(t).strip() for t in tags if str(t).strip()]
+        else:
+            tags = article.tags or []
+
+        
+            
         article.title=data.get("title", article.title)
-        article.status=data.get("status", "draft", article.status)
+        print("article.title after updating",article.title)
+        # article.status=data.get("published", "draft", article.status)
         article.excerpt=data.get("excerpt", article.excerpt)
         article.category=data.get("category", article.category)
-        article.read_time=data.get("read_time", "0 min read", article.read_time)
+        article.read_time=data.get("read_time", article.read_time)
         article.image=data.get("image", article.image)
-        article.author=current_user.get("user",article.author)
-        article.author_avatar=current_user.get("avatar", article.author_avatar)
+        # article.author=current_user.get("user",article.author)
+        # article.author_avatar=current_user.get("avatar", article.author_avatar)
         article.content=data.get("content", article.content)
         article.tags=tags
 
-    try:
-        
-        db.session.commit()
+        try:
+            
+            db.session.commit()
 
-        return jsonify({"message":"article updated successifully"}),200
+            return jsonify({"message":"article updated successifully"}),200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": "failed to update article", "detail": str(e)}), 500
     except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": "failed to update article", "detail": str(e)}), 500
+        print("errorrrr",e)
+        return jsonify({"error":str(e)})
 
 
 # get all the articles
@@ -118,9 +125,9 @@ def articles():
     
 # first we query the db
     articles=Article.query.all()
-    print(articles)
+    # print(articles)
     article_list=[article.to_dict() for article in articles]
-    print("article_list", article_list)
+    # print("article_list", article_list)
 
 
 
@@ -158,3 +165,15 @@ def delete_article(article_id):
 
 
     return jsonify({"message":f"article{article_id} deleted successifully"}),200
+
+
+# get all the articles for the client side
+@article_bp.route("/published_articles", methods=["GET"])
+def published_articles():
+    # i want to get the articles that are published only
+    all_articles=Article.query.all()
+
+    published=[article.to_dict() for article in all_articles if article.status=="published"]
+    # print("publisheeed", published)
+
+    return jsonify(published),200

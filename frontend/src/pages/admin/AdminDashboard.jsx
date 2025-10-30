@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Eye, Plus, Users, BarChart } from 'lucide-react';
 
 
 const AdminDashboard = () => {
+  const API_URL = import.meta.env.VITE_API_URL;
+  const [articles, setArticles]=useState("")
   const stats = [
     {
       title: 'Total Posts',
@@ -59,6 +61,29 @@ const AdminDashboard = () => {
     },
   ];
 
+useEffect(()=>{
+// get the articles and display them
+  fetch(`${API_URL}/articles`,{
+    method:"GET",
+    headers:{
+      "Content-Type":"application/json"
+    },
+
+  })
+  .then(res=>res.json())
+  .then((articles)=>{
+    console.log(articles)
+    // i create a function to filter the last three articles
+    
+  //  we have to loop through the articles and filter based on the last three articles in the db
+  const sorted=articles.sort((a,b)=> new Date(b.created_at)- new Date(a.created_at))
+  const filtred=sorted.slice(0,3)
+  console.log(filtred)
+    
+setArticles(filtred)
+  })
+},[])
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -104,7 +129,7 @@ const AdminDashboard = () => {
         </div>
         <div className="p-6">
           <div className="space-y-4">
-            {recentPosts.map((post) => (
+            {articles.map((post) => (
               <div key={post.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                 <div>
                   <h3 className="font-medium text-gray-900">{post.title}</h3>

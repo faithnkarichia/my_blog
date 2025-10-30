@@ -34,10 +34,10 @@ class Article(db.Model):
     date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     category = db.Column(
-        db.Enum("Frontend", "Backend", "CSS", "JavaScript", "Web Development", "DevOps", name="article_categories"),
-        default="Web Development",
-        nullable=False,
-    )
+    db.String(50),   
+    default="Web Development",
+    nullable=False
+)
 
     read_time = db.Column(db.String(50), nullable=False, default="0 min read")
     image = db.Column(db.String(255), nullable=True)
