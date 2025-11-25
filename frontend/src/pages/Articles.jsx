@@ -1,12 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Tag, ArrowRight, Search, Filter } from 'lucide-react';
 
 const Articles = () => {
+  const API_URL = import.meta.env.VITE_API_URL;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [articles,setArticles]=useState([])
   
-  // Sample articles data - you can expand this
+ useEffect(()=>{
+  fetch(`${API_URL}/articles`,{
+    method:"GET",
+    headers:{
+      "Content-Type":"Application/json"
+    }
+  })
+  .then(res=>res.json())
+  .then((data)=>{
+    console.log(data)
+    setArticles(data)
+  })
+ },[])
   const allArticles = [
     {
       id: 1,
@@ -101,10 +115,10 @@ const Articles = () => {
   ];
 
   // Get unique categories
-  const categories = ['All', ...new Set(allArticles.map(article => article.category))];
+  const categories = ['All', ...new Set(articles.map(article => article.category))];
 
   // Filter articles based on search and category
-  const filteredArticles = allArticles.filter(article => {
+  const filteredArticles = articles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          article.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          article.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -157,7 +171,7 @@ const Articles = () => {
 
           {/* Results Count */}
           <div className="mt-4 text-gray-600">
-            Showing {filteredArticles.length} of {allArticles.length} articles
+            Showing {filteredArticles.length} of {articles.length} articles
             {selectedCategory !== 'All' && ` in ${selectedCategory}`}
             {searchTerm && ` for "${searchTerm}"`}
           </div>

@@ -129,7 +129,7 @@ setArticles(filtred)
         </div>
         <div className="p-6">
           <div className="space-y-4">
-            {articles.map((post) => (
+            {articles && articles.map((post) => (
               <div key={post.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                 <div>
                   <h3 className="font-medium text-gray-900">{post.title}</h3>

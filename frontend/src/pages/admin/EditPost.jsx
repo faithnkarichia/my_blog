@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Eye, FileText, X } from 'lucide-react';
-
-// EditPost component
-// - Fetches article by id
-// - Lets user edit fields
-// - Uploads a new featured image to Cloudinary (unsigned preset) and uses secure_url
-// - PUTs updated article to backend with Authorization header
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { ArrowLeft, Save, Eye, FileText, X, Plus } from 'lucide-react';
 
 export default function EditPost() {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -20,39 +16,31 @@ export default function EditPost() {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState(null);
-  function stripHtml(html = '') {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  return doc.body.textContent || '';
-}
 
   const [formData, setFormData] = useState({
     title: '',
-    content: '',
+    content: '', // main content fallback (HTML)
     excerpt: '',
     status: 'draft',
     category: '',
-    tags: '', // comma separated in UI, convert to array if backend expects array
+    tags: '', // UI: comma separated
     featuredImage: '' // URL
   });
 
-  // local preview URL for selected file (object URL)
+  // sections: array of { id, title, content }
+  const [sections, setSections] = useState([]);
+
+  // preview and selected file for featured image
   const [previewUrl, setPreviewUrl] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('access-token');
-    if (!token) {
-      // optional: redirect to login if unauthenticated
-      console.warn('No token found in localStorage');
-    }
-
     setLoading(true);
+
     fetch(`${API_URL}/article/${id}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: token ? `Bearer ${token}` : undefined,
-      },
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
     })
       .then(async (res) => {
         const json = await res.json().catch(() => ({}));
@@ -60,74 +48,115 @@ export default function EditPost() {
         return json;
       })
       .then((article) => {
+        // populate base fields
         setFormData({
           title: article.title || '',
-          content: stripHtml(article.content || ''),
+          content: article.content || '',
           excerpt: article.excerpt || '',
           status: article.status || 'draft',
           category: article.category || '',
           tags: Array.isArray(article.tags) ? article.tags.join(', ') : (article.tags || ''),
-          featuredImage: article.featuredImage || ''
+          featuredImage: article.image || article.featuredImage || ''
         });
-        setPreviewUrl(article.featuredImage || '');
+        setPreviewUrl(article.image || article.featuredImage || '');
+
+        // prefer structured sections when available
+        if (Array.isArray(article.sections) && article.sections.length > 0) {
+          const normalized = article.sections.map((s, idx) => ({ id: s.id || `s-${idx}`, title: s.title || '', content: s.content || '' }));
+          setSections(normalized);
+        } else if (article.content) {
+          // parse existing HTML content into sections using <h2> boundaries
+          const parsed = parseHTMLToSections(article.content);
+          if (parsed.length) setSections(parsed);
+          else setSections([{ id: Date.now(), title: '', content: article.content || '' }]);
+        } else {
+          setSections([{ id: Date.now(), title: '', content: '' }]);
+        }
       })
       .catch((err) => {
         console.error('Error fetching article:', err);
         alert('Failed to load the article. Check console for details.');
       })
       .finally(() => setLoading(false));
+
   }, [API_URL, id]);
+
+  // parse HTML into sections split at h2 tags
+  function parseHTMLToSections(html) {
+    try {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const nodes = Array.from(doc.body.childNodes);
+      const sectionsOut = [];
+
+      let current = { id: Date.now(), title: '', content: '' };
+
+      nodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === 'h2') {
+          // push previous section if it has content
+          if ((current.title && current.title.trim()) || (current.content && current.content.trim())) {
+            sectionsOut.push(current);
+          }
+          current = { id: Date.now() + Math.random(), title: node.innerHTML || node.textContent || '', content: '' };
+        } else {
+          // append node's outerHTML or text
+          const wrapper = document.createElement('div');
+          wrapper.appendChild(node.cloneNode(true));
+          current.content += wrapper.innerHTML || '';
+        }
+      });
+
+      // push last
+      if ((current.title && current.title.trim()) || (current.content && current.content.trim())) {
+        sectionsOut.push(current);
+      }
+
+      return sectionsOut;
+    } catch (err) {
+      console.error('parseHTMLToSections error', err);
+      return [];
+    }
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // sections helpers
+  const addSection = () => setSections(prev => [...prev, { id: Date.now() + Math.random(), title: '', content: '' }]);
+  const removeSection = (id) => setSections(prev => prev.filter(s => s.id !== id));
+  const updateSectionTitle = (id, value) => setSections(prev => prev.map(s => s.id === id ? { ...s, title: value } : s));
+  const updateSectionContent = (id, value) => setSections(prev => prev.map(s => s.id === id ? { ...s, content: value } : s));
+
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) { alert('Please select an image file'); return; }
+    if (file.size > 8 * 1024 * 1024) { alert('Please choose an image smaller than 8MB'); return; }
 
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
-      return;
-    }
-
-    if (file.size > 8 * 1024 * 1024) { // 8MB limit
-      alert('Please choose an image smaller than 8MB');
-      return;
-    }
-
-    // create preview
     const localUrl = URL.createObjectURL(file);
     setPreviewUrl(localUrl);
     setSelectedFile(file);
     setImageError(null);
 
-    // Option: upload immediately so user sees "uploaded" status before saving
     try {
       const uploadedUrl = await uploadImageToCloudinary(file);
-      if (uploadedUrl) {
-        setFormData(prev => ({ ...prev, featuredImage: uploadedUrl }));
-      }
+      if (uploadedUrl) setFormData(prev => ({ ...prev, featuredImage: uploadedUrl }));
     } catch (err) {
       console.error('Image upload failed:', err);
       setImageError(err.message || 'Upload failed');
       setFormData(prev => ({ ...prev, featuredImage: '' }));
     } finally {
-      // revoke after a short delay to ensure browser displayed image (safe to call)
       setTimeout(() => URL.revokeObjectURL(localUrl), 1000);
     }
   };
 
   const uploadImageToCloudinary = async (file) => {
     if (!file) return null;
-    if (!CLOUD_NAME || !UPLOAD_PRESET) {
-      throw new Error('Missing Cloudinary configuration in env (VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_UPLOAD_PRESET)');
-    }
+    if (!CLOUD_NAME || !UPLOAD_PRESET) throw new Error('Missing Cloudinary config');
 
     setUploadingImage(true);
     setImageError(null);
-
     try {
       const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
       const data = new FormData();
@@ -137,15 +166,9 @@ export default function EditPost() {
 
       const res = await fetch(url, { method: 'POST', body: data });
       const json = await res.json();
-      if (!res.ok) {
-        console.error('Cloudinary response error', json);
-        throw new Error(json.error?.message || 'Failed to upload image');
-      }
-
-      // json.secure_url is the canonical URL to store
+      if (!res.ok) throw new Error(json.error?.message || 'Failed to upload image');
       return json.secure_url;
     } catch (err) {
-      console.error('uploadImageToCloudinary error', err);
       setImageError(err.message || 'Image upload failed');
       throw err;
     } finally {
@@ -160,49 +183,64 @@ export default function EditPost() {
   };
 
   const handlePreview = () => {
-    // You can implement a route that accepts the post data for preview.
-    // For now we'll just open a blank window and log to console.
-    console.log('Preview post:', formData);
+    console.log('Preview post:', { ...formData, sections });
     window.open('/', '_blank');
   };
 
+  const modules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['link', 'image'],
+      ['blockquote', 'code-block'],
+      ['clean']
+    ]
+  };
+
+  const formats = [
+    'header', 'bold', 'italic', 'underline', 'strike',
+    'list', 'bullet', 'link', 'image', 'blockquote', 'code-block'
+  ];
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (uploadingImage) {
-      alert('Still uploading image. Please wait a moment.');
-      return;
-    }
+    if (uploadingImage) { alert('Still uploading image. Please wait.'); return; }
 
     setSaving(true);
     const token = localStorage.getItem('access-token');
 
     try {
-      
-      if (!formData.title || !formData.content || !formData.category) {
-        alert('Please fill title, content, and category');
-        return;
-      }
+      // require minimal fields
+      if (!formData.title || !formData.category) { alert('Please fill title and category'); setSaving(false); return; }
 
-      // Convert tags string to array if backend expects array
+      const payloadSections = sections
+        .filter(s => (s.title && s.title.trim()) || (s.content && s.content.trim()))
+        .map(s => ({ title: s.title || '', content: s.content || '' }));
+
+      const fallbackContent = formData.content && formData.content.trim()
+        ? formData.content
+        : payloadSections.map(s => `<h2>${s.title}</h2>${s.content}`).join('');
+
       const payload = {
-        ...formData,
+        title: formData.title,
+        excerpt: formData.excerpt,
+        content: fallbackContent,
+        sections: payloadSections,
+        category: formData.category,
         tags: typeof formData.tags === 'string' ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : formData.tags,
+        image: formData.featuredImage || '',
+        status: formData.status
       };
 
       const res = await fetch(`${API_URL}/edit_article/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(payload)
       });
 
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        console.error('Update failed', json);
-        throw new Error(json.message || 'Update failed');
-      }
+      if (!res.ok) throw new Error(json.message || 'Update failed');
 
       alert('Post updated successfully');
       navigate('/admin/posts');
@@ -214,15 +252,13 @@ export default function EditPost() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-600">Loading post...</div>
-        </div>
+  if (loading) return (
+    <div className="p-8">
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-600">Loading post...</div>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <div className="p-8">
@@ -240,8 +276,7 @@ export default function EditPost() {
 
         <div className="flex items-center space-x-3">
           <button onClick={handlePreview} className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
-            <Eye size={20} />
-            <span>Preview</span>
+            <Eye size={20} /><span>Preview</span>
           </button>
 
           <button onClick={handleSubmit} disabled={saving || uploadingImage} className="bg-black text-white px-6 py-3 rounded-lg flex items-center space-x-2 disabled:opacity-50">
@@ -259,8 +294,29 @@ export default function EditPost() {
           </div>
 
           <div className="bg-white p-6 rounded-lg border border-gray-200">
-            <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">Content</label>
-            <textarea id="content" name="content" value={formData.content} onChange={handleInputChange} rows={15} className="w-full px-3 py-2 border rounded resize-vertical" placeholder="Write your post content here..." required />
+            <label className="block text-sm font-medium text-gray-700 mb-2">Main Content (optional — sections preferred)</label>
+            <ReactQuill value={formData.content} onChange={(val) => setFormData(prev => ({ ...prev, content: val }))} modules={modules} formats={formats} theme="snow" style={{ minHeight: 200 }} />
+            <p className="text-sm text-gray-500 mt-2">If you leave this empty, the editor will send the combined sections as content fallback.</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Sections (subtitles + content)</h3>
+              <button type="button" onClick={addSection} className="inline-flex items-center space-x-2 text-sm text-gray-700 hover:underline">
+                <Plus size={16} /><span>Add section</span>
+              </button>
+            </div>
+
+            {sections.map((section, idx) => (
+              <div key={section.id} className="bg-white p-4 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <input type="text" value={section.title} onChange={(e) => updateSectionTitle(section.id, e.target.value)} placeholder={`Section ${idx+1} title (h2)`} className="flex-1 px-3 py-2 border rounded" />
+                  <button type="button" onClick={() => removeSection(section.id)} className="ml-3 text-sm text-red-600">Remove</button>
+                </div>
+
+                <ReactQuill value={section.content} onChange={(val) => updateSectionContent(section.id, val)} modules={modules} formats={formats} theme="snow" style={{ minHeight: 140 }} />
+              </div>
+            ))}
           </div>
 
           <div className="bg-white p-6 rounded-lg border border-gray-200">

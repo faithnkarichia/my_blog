@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { Save, Eye, Upload, X } from 'lucide-react';
+import { Save, Eye, Upload, X, Plus } from 'lucide-react';
 
 const NewPost = () => {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -17,6 +17,11 @@ const NewPost = () => {
     status: 'draft'
   });
 
+  // sections: array of { id, title, content }
+  const [sections, setSections] = useState([
+    { id: Date.now(), title: '', content: '' }
+  ]);
+
   // Featured image / upload states
   const [featuredImage, setFeaturedImage] = useState(null); // local preview URL
   const [selectedFile, setSelectedFile] = useState(null);
@@ -30,11 +35,33 @@ const NewPost = () => {
 
   const categories = ['Frontend', 'Backend', 'CSS', 'JavaScript', 'Web Development', 'DevOps'];
 
-  // Calculate read time based on content
-  const calculateReadTime = (content) => {
-    const text = content.replace(/<[^>]*>/g, '');
-    const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
-    const readingTimeMinutes = Math.ceil((wordCount || 0) / 200);
+  // helpers for sections
+  const addSection = () => {
+    setSections(prev => [...prev, { id: Date.now() + Math.floor(Math.random()*1000), title: '', content: '' }]);
+  };
+
+  const removeSection = (id) => {
+    setSections(prev => prev.filter(s => s.id !== id));
+    // update readTime after removal
+    setTimeout(() => setReadTime(calculateReadTime(post.content, sections.filter(s => s.id !== id))), 0);
+  };
+
+  const updateSectionTitle = (id, value) => {
+    setSections(prev => prev.map(s => s.id === id ? { ...s, title: value } : s));
+  };
+
+  const updateSectionContent = (id, value) => {
+    setSections(prev => prev.map(s => s.id === id ? { ...s, content: value } : s));
+    setTimeout(() => setReadTime(calculateReadTime(post.content, sections.map(s => s.id === id ? { ...s, content: value } : s))), 0);
+  };
+
+  // Calculate read time based on content + sections
+  const calculateReadTime = (mainContent, sectionsArr = []) => {
+    const stripHtml = (html = '') => (html || '').replace(/<[^>]*>/g, ' ');
+    const mainText = stripHtml(mainContent);
+    const sectionsText = sectionsArr.map(s => stripHtml((s.title || '') + ' ' + (s.content || ''))).join(' ');
+    const wordCount = (mainText + ' ' + sectionsText).trim().split(/\s+/).filter(Boolean).length;
+    const readingTimeMinutes = Math.max(1, Math.ceil((wordCount || 0) / 200));
     return `${readingTimeMinutes} min read`;
   };
 
@@ -114,17 +141,18 @@ const NewPost = () => {
     setImageError(null);
   };
 
-  const handleContentChange = (content) => {
-    setPost({ ...post, content });
-    const calculatedReadTime = calculateReadTime(content);
-    setReadTime(calculatedReadTime);
+  const handleMainContentChange = (content) => {
+    setPost(prev => ({ ...prev, content }));
+    setReadTime(calculateReadTime(content, sections));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!post.title || !post.content || !post.category) {
-      alert('Please fill in all required fields: Title, Content, and Category');
+    // require: title, category, and at least one section or main content
+    const hasSections = sections.some(s => (s.title && s.title.trim()) || (s.content && s.content.trim()));
+    if (!post.title || !post.category || (!hasSections && !post.content.trim())) {
+      alert('Please fill in Title, Category, and at least one section or main content.');
       return;
     }
 
@@ -135,10 +163,21 @@ const NewPost = () => {
       return;
     }
 
+    // prepare sections (send title + content HTML)
+    const payloadSections = sections
+      .filter(s => (s.title && s.title.trim()) || (s.content && s.content.trim()))
+      .map(s => ({ title: s.title || '', content: s.content || '' }));
+
+    // fallback content: if main content empty, build it from sections (keeps compatibility)
+    const fallbackContent = post.content && post.content.trim()
+      ? post.content
+      : payloadSections.map(s => `<h2>${s.title}</h2>${s.content}`).join('');
+
     const postData = {
       title: post.title,
       excerpt: post.excerpt,
-      content: post.content,
+      content: fallbackContent, // fallback combined HTML
+      sections: payloadSections, // structured sections
       category: post.category,
       tags: post.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
       image: post.image,
@@ -255,20 +294,58 @@ const NewPost = () => {
               />
             </div>
 
-            {/* Content */}
+            {/* Main Content (optional) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Content *
+                Main Content (optional — sections preferred)
               </label>
               <ReactQuill
                 value={post.content}
-                onChange={handleContentChange}
+                onChange={handleMainContentChange}
                 modules={modules}
                 formats={formats}
                 theme="snow"
                 className="bg-white rounded-lg"
-                style={{ height: '400px' }}
+                style={{ height: '300px' }}
               />
+              <p className="text-sm text-gray-500 mt-2">If you leave this empty, the editor will send the combined sections as content fallback.</p>
+            </div>
+
+            {/* Sections editor */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Sections (subtitles + content)</h3>
+                <button type="button" onClick={addSection} className="inline-flex items-center space-x-2 text-sm text-gray-700 hover:underline">
+                  <Plus size={16} />
+                  <span>Add section</span>
+                </button>
+              </div>
+
+              {sections.map((section, idx) => (
+                <div key={section.id} className="bg-white p-4 rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <input
+                      type="text"
+                      value={section.title}
+                      onChange={(e) => updateSectionTitle(section.id, e.target.value)}
+                      placeholder={`Section ${idx + 1} title (h2)`}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-black"
+                    />
+                    <button type="button" onClick={() => removeSection(section.id)} className="ml-3 text-sm text-red-600">
+                      Remove
+                    </button>
+                  </div>
+
+                  <ReactQuill
+                    value={section.content}
+                    onChange={(value) => updateSectionContent(section.id, value)}
+                    modules={modules}
+                    formats={formats}
+                    theme="snow"
+                    style={{ minHeight: 140 }}
+                  />
+                </div>
+              ))}
             </div>
           </div>
 
