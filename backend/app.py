@@ -21,11 +21,12 @@ jwt.init_app(app)
 migrate.init_app(app,db)
 bcrypt.init_app(app)
 
-from views import user_bp,article_bp
+from views import user_bp,article_bp,comment_bp
 
 
 app.register_blueprint(user_bp)
 app.register_blueprint(article_bp)
+app.register_blueprint(comment_bp)
 
 @app.route("/")
 def home():

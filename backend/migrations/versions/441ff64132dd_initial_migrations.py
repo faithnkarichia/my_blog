@@ -1,8 +1,8 @@
 """Initial migrations
 
-Revision ID: 7dce07035c54
+Revision ID: 441ff64132dd
 Revises: 
-Create Date: 2025-10-16 15:18:54.625372
+Create Date: 2025-11-06 15:25:44.796583
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '7dce07035c54'
+revision = '441ff64132dd'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -34,16 +34,18 @@ def upgrade():
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('excerpt', sa.String(length=1024), nullable=False),
     sa.Column('date', sa.DateTime(), nullable=False),
-    sa.Column('category', sa.Enum('Frontend', 'Backend', 'CSS', 'JavaScript', 'Web Development', 'DevOps', name='article_categories'), nullable=False),
+    sa.Column('category', sa.String(length=50), nullable=False),
     sa.Column('read_time', sa.String(length=50), nullable=False),
     sa.Column('image', sa.String(length=255), nullable=True),
     sa.Column('author', sa.String(length=100), nullable=True),
     sa.Column('author_avatar', sa.String(length=255), nullable=True),
-    sa.Column('content', sa.Text(), nullable=True),
+    sa.Column('content', sa.Text(), nullable=False),
+    sa.Column('sections', sa.JSON(), nullable=False),
     sa.Column('title', sa.String(length=300), nullable=False),
     sa.Column('status', sa.String(), nullable=False),
     sa.Column('likes', sa.Integer(), nullable=False),
     sa.Column('liked', sa.Boolean(), nullable=False),
+    sa.Column('stats', sa.Integer(), nullable=True),
     sa.Column('tags', sa.JSON(), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')

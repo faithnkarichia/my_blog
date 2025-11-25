@@ -44,6 +44,7 @@ class Article(db.Model):
     author = db.Column(db.String(100), nullable=True)
     author_avatar = db.Column(db.String(255), nullable=True)
     content = db.Column(db.Text, nullable=False)
+    sections = db.Column(db.JSON, default=list, nullable=False)
     title= db.Column(db.String(300), nullable= False)
     status=db.Column(db.String, nullable=False)
 
@@ -76,6 +77,7 @@ class Article(db.Model):
             "author": self.author,
             "author_avatar": self.author_avatar,
             "content": self.content,
+            "sections": self.sections or [],
             "status": self.status,
             "likes": self.likes,
             "liked": self.liked,
@@ -111,11 +113,12 @@ class Comment(db.Model):
         return f"<Comment {self.id} on article {self.article_id}>"
     
 
-    def to_dict(self, include_user: bool = False):
+    def to_dict(self):
         data = {
             "id": self.id,
             "article_id": self.article_id,
             "user_id": self.user_id,
+            
             "avatar": self.avatar,
             "content": self.content,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -123,13 +126,8 @@ class Comment(db.Model):
             "replies": self.replies if self.replies is not None else [],
         }
 
-        if include_user and self.user:
-            data["user"] = {
-                "id": getattr(self.user, "id", None),
-                "full_name": getattr(self.user, "full_name", None),
-                "email": getattr(self.user, "email", None),         
-                "avatar": getattr(self.user, "avatar", None),
-               
-            }
+        if self.user:  # relationship fetch
+            data["user"] = self.user.full_name  # or username field
+            data["avatar"] = self.user.avatar
 
         return data
